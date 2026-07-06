@@ -4,6 +4,7 @@ import {
   GatewayIntentBits,
   REST,
   Routes,
+  type Guild,
   type ChatInputCommandInteraction,
 } from "discord.js";
 import { buildBanbotCommand, handleBanbotInteraction } from "./commands.js";
@@ -20,8 +21,28 @@ async function registerCommands(config: ReturnType<typeof loadConfig>, logger: L
   }
 
   const rest = new REST({ version: "10" }).setToken(config.discordToken);
-  await rest.put(Routes.applicationCommands(config.clientId), { body: [buildBanbotCommand().toJSON()] });
-  logger.info("Registered /banbot command");
+  const body = [buildBanbotCommand().toJSON()];
+  await rest.put(Routes.applicationCommands(config.clientId), { body });
+  logger.info("Registered global /banbot command");
+}
+
+async function registerGuildCommands(
+  guilds: Iterable<Guild>,
+  config: ReturnType<typeof loadConfig>,
+  logger: Logger,
+): Promise<void> {
+  if (!config.clientId) return;
+
+  const rest = new REST({ version: "10" }).setToken(config.discordToken);
+  const body = [buildBanbotCommand().toJSON()];
+  for (const guild of guilds) {
+    try {
+      await rest.put(Routes.applicationGuildCommands(config.clientId, guild.id), { body });
+      logger.info("Registered guild /banbot command", { guild: guild.name, guildId: guild.id });
+    } catch (error) {
+      logger.warn("Could not register guild /banbot command", { guild: guild.name, guildId: guild.id, error: String(error) });
+    }
+  }
 }
 
 async function handleInteraction(
@@ -55,9 +76,14 @@ async function main(): Promise<void> {
     logger.info("Discord client ready", { user: readyClient.user.tag });
     try {
       await registerCommands(config, logger);
+      await registerGuildCommands(readyClient.guilds.cache.values(), config, logger);
     } catch (error) {
       logger.warn("Could not register /banbot command", { error: String(error) });
     }
+  });
+
+  client.on(Events.GuildCreate, async (guild) => {
+    await registerGuildCommands([guild], config, logger);
   });
 
   client.on(Events.MessageCreate, async (message) => {
