@@ -15,7 +15,11 @@ fi
 confirm() {
   local prompt_text="$1"
   local answer
-  read -r -p "$prompt_text [y/N]: " answer
+  if [ -r /dev/tty ]; then
+    read -r -p "$prompt_text [y/N]: " answer </dev/tty
+  else
+    read -r -p "$prompt_text [y/N]: " answer
+  fi
   case "$answer" in
     y|Y|yes|YES) return 0 ;;
     *) return 1 ;;
@@ -152,10 +156,18 @@ prompt() {
   local default="${2:-}"
   local value
   if [ -n "$default" ]; then
-    read -r -p "$label [$default]: " value
+    if [ -r /dev/tty ]; then
+      read -r -p "$label [$default]: " value </dev/tty
+    else
+      read -r -p "$label [$default]: " value
+    fi
     echo "${value:-$default}"
   else
-    read -r -p "$label: " value
+    if [ -r /dev/tty ]; then
+      read -r -p "$label: " value </dev/tty
+    else
+      read -r -p "$label: " value
+    fi
     echo "$value"
   fi
 }
