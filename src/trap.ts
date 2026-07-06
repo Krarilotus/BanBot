@@ -70,6 +70,7 @@ export async function handleTrapMessage(message: Message, guildConfig: GuildConf
         reason: `Trap channel soft-kick: ${message.channelId}; user had roles`,
       });
       await message.guild.members.unban(message.author.id, `Trap channel soft-kick release: ${message.channelId}`);
+      await logger.notifyTrapChannel(message, "kicked");
       const result = { kind: "kicked" as const, userId: message.author.id, reason: "soft-kicked user with roles and deleted recent messages" };
       await logger.logAction(message, guildConfig, result);
       return result;
@@ -104,7 +105,7 @@ export async function handleTrapMessage(message: Message, guildConfig: GuildConf
         : `Trap channel hit: ${message.channelId}; user had only @everyone`,
     });
 
-    await logger.notifyBan(message);
+    await logger.notifyTrapChannel(message, "banned");
     const result = {
       kind: "banned" as const,
       userId: message.author.id,

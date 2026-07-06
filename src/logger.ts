@@ -33,11 +33,11 @@ export class Logger {
     });
   }
 
-  async notifyBan(message: Message): Promise<void> {
+  async notifyTrapChannel(message: Message, action: "banned" | "kicked"): Promise<void> {
     try {
       if (message.channel.isTextBased() && "send" in message.channel) {
         await message.channel.send({
-          content: `${message.author.tag} banned`,
+          content: `${message.author.tag} ${action}`,
           allowedMentions: { parse: [] },
         });
       }

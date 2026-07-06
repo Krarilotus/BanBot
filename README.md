@@ -65,6 +65,7 @@ When dry-run behaves correctly:
 - Starts in dry-run mode.
 - Requires the exact Discord-side confirmation `enable ban mode` before real bans.
 - Deletes up to the configured number of seconds of the banned user's prior messages.
+- Posts action notices in the trap channel itself, such as `<username> banned` or `<username> kicked`.
 - Stores per-server config in `/home/banbot/BanBot/data/config.json`, mounted into the container at `/data/config.json`.
 
 It does not read message content, store messages, manage roles, scan all channels, or need Administrator.

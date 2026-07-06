@@ -42,8 +42,8 @@ function logger() {
       logAction: async () => {
         calls.push("logAction");
       },
-      notifyBan: async () => {
-        calls.push("notifyBan");
+      notifyTrapChannel: async (_message: unknown, action: "banned" | "kicked") => {
+        calls.push(`notify:${action}`);
       },
     } as unknown as Logger,
   };
@@ -232,7 +232,7 @@ describe("handleTrapMessage", () => {
       reason: "Trap channel soft-kick: trap-channel; user had roles",
     });
     assert.equal(unbanReason, "Trap channel soft-kick release: trap-channel");
-    assert.deepEqual(logs.calls, ["logAction"]);
+    assert.deepEqual(logs.calls, ["notify:kicked", "logAction"]);
   });
 
   it("uses configured role-user message deletion seconds for soft-kicks", async () => {
@@ -304,7 +304,7 @@ describe("handleTrapMessage", () => {
       deleteMessageSeconds: 123,
       reason: "Trap channel hit: trap-channel; user had only @everyone",
     });
-    assert.deepEqual(logs.calls, ["notifyBan", "logAction"]);
+    assert.deepEqual(logs.calls, ["notify:banned", "logAction"]);
   });
 
   it("does not ban when ban mode was selected but not confirmed", async () => {
