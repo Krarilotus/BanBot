@@ -12,10 +12,59 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+confirm() {
+  local prompt_text="$1"
+  local answer
+  read -r -p "$prompt_text [y/N]: " answer
+  case "$answer" in
+    y|Y|yes|YES) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+print_preflight() {
+  echo "BanBot installer preflight"
+  echo
+  echo "This installer WILL:"
+  echo "  - create or reuse locked non-login user: $APP_USER"
+  echo "  - clone/update repo at: $APP_DIR"
+  echo "  - create/update Docker Compose files for the BanBot container"
+  echo "  - create/update /etc/cron.d/discord-trap-ban-bot for BanBot image updates"
+  echo
+  echo "This installer WILL NOT:"
+  echo "  - edit nginx config"
+  echo "  - edit ufw/firewalld rules"
+  echo "  - expose or publish any container ports"
+  echo "  - bind to ports 80, 443, or any app/domain port"
+  echo "  - change existing domain or reverse-proxy routing"
+  echo
+  if command -v ss >/dev/null 2>&1; then
+    echo "Currently listening TCP ports:"
+    ss -ltnp 2>/dev/null | sed -n '1,12p' || true
+    echo
+  fi
+  if systemctl list-unit-files nginx.service >/dev/null 2>&1; then
+    echo "nginx detected. It will not be modified or restarted."
+    echo
+  fi
+  if command -v docker >/dev/null 2>&1; then
+    echo "Docker detected."
+  else
+    echo "Docker is not installed. Installing Docker can add Docker-managed iptables chains."
+    echo "The BanBot compose file still publishes no ports."
+  fi
+  echo
+  confirm "Continue with BanBot install?" || { echo "Cancelled."; exit 1; }
+}
+
 install_docker() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
     return
   fi
+  confirm "Docker is missing. Install Docker Engine and Compose plugin now?" || {
+    echo "Install Docker manually, then rerun this installer."
+    exit 1
+  }
   if command -v apt-get >/dev/null 2>&1; then
     local docker_os
     apt-get update
@@ -42,6 +91,14 @@ install_security_updates() {
     echo "Skipping unattended-upgrades setup because apt-get is not available."
     return
   fi
+  if dpkg -s unattended-upgrades >/dev/null 2>&1; then
+    echo "unattended-upgrades already installed."
+    return
+  fi
+  confirm "Install and enable Debian unattended security updates?" || {
+    echo "Skipping unattended-upgrades."
+    return
+  }
   apt-get update
   apt-get install -y unattended-upgrades
   dpkg-reconfigure -f noninteractive unattended-upgrades || true
@@ -224,6 +281,7 @@ HEALTH_HOST=127.0.0.1
 EOF
 }
 
+print_preflight
 install_security_updates
 install_docker
 install_git

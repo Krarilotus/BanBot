@@ -34,6 +34,8 @@ The installer asks only for:
 
 It then installs Docker and git if needed, creates a locked non-login `banbot` user, clones this repo to `/home/banbot/BanBot`, starts the bot, and prints the invite URL.
 
+The installer does not edit nginx, firewall rules, domains, reverse proxies, or existing app ports. The container publishes no ports. If Docker is not installed yet, the installer asks before installing it because Docker itself creates Docker-managed iptables chains.
+
 After inviting the bot, configure it inside Discord as a server admin:
 
 ```text
@@ -196,6 +198,8 @@ Uninstall container while keeping config:
 ## Server Hardening
 
 No public inbound ports, reverse proxy, domain, TLS certificate, or database are required.
+
+BanBot does not need nginx. It makes outbound Discord connections only and has no inbound HTTP listener unless you deliberately enable the local health endpoint.
 
 Recommended basics:
 
