@@ -2,11 +2,14 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { ActionMode, Config } from "./config.js";
 
+export type RoleUserAction = "ignore" | "kick" | "ban";
+
 export interface GuildConfig {
   guildId: string;
   trapChannelIds: string[];
   logChannelId?: string;
   actionMode: ActionMode;
+  roleUserAction: RoleUserAction;
   deleteMessageSeconds: number;
   banConfirmed: boolean;
   updatedAt: string;
@@ -55,6 +58,7 @@ export function defaultsForGuild(guildId: string, config: Config, updatedBy: str
     guildId,
     trapChannelIds: [],
     actionMode: config.defaultActionMode,
+    roleUserAction: "ignore",
     deleteMessageSeconds: config.defaultDeleteMessageSeconds,
     banConfirmed: false,
     updatedAt: new Date().toISOString(),

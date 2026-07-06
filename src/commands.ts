@@ -12,9 +12,9 @@ export const banbotHelp = [
   "BanBot setup:",
   "1. Run `/banbot setup trap_channel:#your-trap-channel`.",
   "2. Keep mode as dry-run while testing.",
-  "3. When dry-run logs look right, run `/banbot setup mode:ban confirm_ban_mode:enable ban mode`.",
-  "4. The bot only bans human users with no roles except @everyone.",
-  "5. The bot ignores its own messages, bots, webhooks, and users with any real role.",
+  "3. Optional: `/banbot setup role_user_action:kick` to kick users who have roles instead of ignoring them.",
+  "4. When dry-run logs look right, run `/banbot setup mode:ban confirm_ban_mode:enable ban mode`.",
+  "5. The bot ignores its own messages, bots, and webhooks.",
 ].join("\n");
 
 export function buildBanbotCommand(): SlashCommandSubcommandsOnlyBuilder {
@@ -51,6 +51,17 @@ export function buildBanbotCommand(): SlashCommandSubcommandsOnlyBuilder {
             .setName("mode")
             .setDescription("dry-run logs only; ban actually bans")
             .addChoices({ name: "dry-run", value: "dry-run" }, { name: "ban", value: "ban" })
+            .setRequired(false),
+        )
+        .addStringOption((option) =>
+          option
+            .setName("role_user_action")
+            .setDescription("What to do when a user with roles posts in the trap channel")
+            .addChoices(
+              { name: "ignore users with roles", value: "ignore" },
+              { name: "kick users with roles", value: "kick" },
+              { name: "ban users with roles", value: "ban" },
+            )
             .setRequired(false),
         )
         .addIntegerOption((option) =>
@@ -101,12 +112,16 @@ export async function handleBanbotInteraction(
   const trapChannel = interaction.options.getChannel("trap_channel");
   const logChannel = interaction.options.getChannel("log_channel");
   const mode = interaction.options.getString("mode");
+  const roleUserAction = interaction.options.getString("role_user_action");
   const deleteSeconds = interaction.options.getInteger("delete_seconds");
   const confirmBanMode = interaction.options.getString("confirm_ban_mode");
 
   if (trapChannel) next.trapChannelIds = [trapChannel.id];
   if (logChannel) next.logChannelId = logChannel.id;
   if (mode === "dry-run" || mode === "ban") next.actionMode = mode;
+  if (roleUserAction === "ignore" || roleUserAction === "kick" || roleUserAction === "ban") {
+    next.roleUserAction = roleUserAction;
+  }
   if (typeof deleteSeconds === "number") next.deleteMessageSeconds = deleteSeconds;
   next.banConfirmed = next.actionMode === "ban" && confirmBanMode === "enable ban mode";
   if (next.actionMode !== "ban") next.banConfirmed = false;
@@ -125,6 +140,7 @@ export function formatStatus(config: GuildConfig | undefined): string {
     `Trap channels: ${trapChannels}`,
     `Log channel: ${logChannel}`,
     `Mode: ${effectiveActionMode(config)}${config.actionMode === "ban" && !config.banConfirmed ? " (ban requested but not confirmed)" : ""}`,
+    `Users with roles: ${config.roleUserAction ?? "ignore"}`,
     `Delete seconds: ${config.deleteMessageSeconds}`,
     `Updated: ${config.updatedAt}`,
   ].join("\n");

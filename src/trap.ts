@@ -6,6 +6,7 @@ export type TrapResult =
   | { kind: "ignored"; reason: string }
   | { kind: "dry-run"; userId: string; reason: string }
   | { kind: "banned"; userId: string; reason: string }
+  | { kind: "kicked"; userId: string; reason: string }
   | { kind: "failed"; userId?: string; reason: string; error?: unknown };
 
 const inFlight = new Set<string>();
@@ -40,11 +41,36 @@ export async function handleTrapMessage(message: Message, guildConfig: GuildConf
 
   try {
     const member = await getMember(message);
-    if (hasAnyNonEveryoneRole(message.guild.id, member.roles.cache.keys())) {
+    const hasRoles = hasAnyNonEveryoneRole(message.guild.id, member.roles.cache.keys());
+    const roleUserAction = guildConfig.roleUserAction ?? "ignore";
+
+    const botMember = message.guild.members.me ?? (await message.guild.members.fetchMe());
+    if (hasRoles && roleUserAction === "ignore") {
       return { kind: "ignored", reason: "user has a non-everyone role" };
     }
 
-    const botMember = message.guild.members.me ?? (await message.guild.members.fetchMe());
+    if (hasRoles && roleUserAction === "kick") {
+      if (!botMember.permissions.has(PermissionFlagsBits.KickMembers)) {
+        const result = { kind: "failed" as const, userId: message.author.id, reason: "bot lacks Kick Members permission" };
+        await logger.logAction(message, guildConfig, result);
+        return result;
+      }
+      if (!member.kickable) {
+        const result = { kind: "failed" as const, userId: message.author.id, reason: "target member is not kickable" };
+        await logger.logAction(message, guildConfig, result);
+        return result;
+      }
+      if (effectiveActionMode(guildConfig) === "dry-run") {
+        const result = { kind: "dry-run" as const, userId: message.author.id, reason: "would kick user with roles in trap channel" };
+        await logger.logAction(message, guildConfig, result);
+        return result;
+      }
+      await member.kick(`Trap channel hit: ${message.channelId}; user had roles`);
+      const result = { kind: "kicked" as const, userId: message.author.id, reason: "kicked user with roles in trap channel" };
+      await logger.logAction(message, guildConfig, result);
+      return result;
+    }
+
     if (!botMember.permissions.has(PermissionFlagsBits.BanMembers)) {
       const result = { kind: "failed" as const, userId: message.author.id, reason: "bot lacks Ban Members permission" };
       await logger.logAction(message, guildConfig, result);
@@ -58,18 +84,28 @@ export async function handleTrapMessage(message: Message, guildConfig: GuildConf
     }
 
     if (effectiveActionMode(guildConfig) === "dry-run") {
-      const result = { kind: "dry-run" as const, userId: message.author.id, reason: "would ban roleless user in trap channel" };
+      const result = {
+        kind: "dry-run" as const,
+        userId: message.author.id,
+        reason: hasRoles ? "would ban user with roles in trap channel" : "would ban roleless user in trap channel",
+      };
       await logger.logAction(message, guildConfig, result);
       return result;
     }
 
     await member.ban({
       deleteMessageSeconds: guildConfig.deleteMessageSeconds,
-      reason: `Trap channel hit: ${message.channelId}; user had only @everyone`,
+      reason: hasRoles
+        ? `Trap channel hit: ${message.channelId}; user had roles`
+        : `Trap channel hit: ${message.channelId}; user had only @everyone`,
     });
 
     await logger.notifyBan(message);
-    const result = { kind: "banned" as const, userId: message.author.id, reason: "banned roleless user in trap channel" };
+    const result = {
+      kind: "banned" as const,
+      userId: message.author.id,
+      reason: hasRoles ? "banned user with roles in trap channel" : "banned roleless user in trap channel",
+    };
     await logger.logAction(message, guildConfig, result);
     return result;
   } catch (error) {

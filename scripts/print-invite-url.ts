@@ -8,7 +8,11 @@ if (!clientId || !/^\d{17,20}$/.test(clientId)) {
   process.exit(1);
 }
 
-const permissions = PermissionFlagsBits.ViewChannel | PermissionFlagsBits.BanMembers | PermissionFlagsBits.SendMessages;
+const permissions =
+  PermissionFlagsBits.ViewChannel |
+  PermissionFlagsBits.KickMembers |
+  PermissionFlagsBits.BanMembers |
+  PermissionFlagsBits.SendMessages;
 
 const params = new URLSearchParams({
   client_id: clientId,
