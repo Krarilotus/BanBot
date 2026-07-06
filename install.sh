@@ -257,8 +257,11 @@ EOF
 
 write_env() {
   if [ -f "$APP_DIR/.env" ]; then
-    echo "Keeping existing $APP_DIR/.env"
-    return
+    echo "Existing $APP_DIR/.env found."
+    confirm "Update Discord token / application ID in .env?" || {
+      echo "Keeping existing $APP_DIR/.env"
+      return
+    }
   fi
 
   local token client_id
@@ -282,7 +285,7 @@ write_env() {
   fi
 
   umask 077
-  cat > "$APP_DIR/.env" <<EOF
+  cat > "$APP_DIR/.env.tmp" <<EOF
 # Discord bot token from the Discord Developer Portal.
 DISCORD_TOKEN=$token
 
@@ -297,6 +300,8 @@ CONFIG_PATH=/data/config.json
 HEALTH_PORT=
 HEALTH_HOST=127.0.0.1
 EOF
+  mv "$APP_DIR/.env.tmp" "$APP_DIR/.env"
+  chmod 600 "$APP_DIR/.env"
 }
 
 print_preflight
