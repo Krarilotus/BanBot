@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-git pull --ff-only
-docker compose pull
-docker compose up -d
+cd "$(dirname "$0")"
+docker compose ps
 docker compose logs --tail=80

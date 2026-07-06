@@ -7,10 +7,7 @@ Tiny self-hosted Discord bot for one job: watch configured trap channels and ban
 On the server as root:
 
 ```bash
-cd /root
-curl -fsSLO https://raw.githubusercontent.com/Krarilotus/BanBot/master/install.sh
-less install.sh
-bash install.sh
+curl -fsSL https://raw.githubusercontent.com/Krarilotus/BanBot/master/install.sh | bash
 ```
 
 The installer asks only for:
@@ -18,7 +15,7 @@ The installer asks only for:
 - Discord bot token
 - Discord application client ID
 
-It then installs Docker if needed, creates `/opt/discord-trap-ban-bot`, starts the bot, and prints the invite URL.
+It then installs Docker and git if needed, creates a locked non-login `banbot` user, clones this repo to `/home/banbot/BanBot`, starts the bot, and prints the invite URL.
 
 After inviting the bot, configure it inside Discord as a server admin:
 
@@ -166,19 +163,19 @@ docker compose run --rm discord-trap-ban-bot validate-config
 Installer deployment:
 
 ```bash
-/opt/discord-trap-ban-bot/update.sh
+/home/banbot/BanBot/update.sh
 ```
 
 Status:
 
 ```bash
-/opt/discord-trap-ban-bot/status.sh
+/home/banbot/BanBot/status.sh
 ```
 
 Uninstall container while keeping config:
 
 ```bash
-/opt/discord-trap-ban-bot/uninstall.sh
+/home/banbot/BanBot/uninstall.sh
 ```
 
 ## Server Hardening
