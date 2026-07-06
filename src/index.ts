@@ -21,9 +21,8 @@ async function registerCommands(config: ReturnType<typeof loadConfig>, logger: L
   }
 
   const rest = new REST({ version: "10" }).setToken(config.discordToken);
-  const body = [buildBanbotCommand().toJSON()];
-  await rest.put(Routes.applicationCommands(config.clientId), { body });
-  logger.info("Registered global /banbot command");
+  await rest.put(Routes.applicationCommands(config.clientId), { body: [] });
+  logger.info("Cleared global /banbot command");
 }
 
 async function registerGuildCommands(
