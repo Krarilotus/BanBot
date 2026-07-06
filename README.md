@@ -24,7 +24,8 @@ Do this in the Discord Developer Portal before running the server installer:
 On the server as root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Krarilotus/BanBot/master/install.sh | bash
+curl -fsSLO https://raw.githubusercontent.com/Krarilotus/BanBot/master/install.sh
+bash install.sh
 ```
 
 The installer asks only for:

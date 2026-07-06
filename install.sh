@@ -12,14 +12,22 @@ if [ "$(id -u)" -ne 0 ]; then
   exit 1
 fi
 
+read_from_terminal() {
+  local prompt_text="$1"
+  local value
+  if [ -e /dev/tty ]; then
+    printf "%s" "$prompt_text" >/dev/tty
+    IFS= read -r value </dev/tty || value=""
+  else
+    read -r -p "$prompt_text" value || value=""
+  fi
+  printf "%s" "$value"
+}
+
 confirm() {
   local prompt_text="$1"
   local answer
-  if [ -r /dev/tty ]; then
-    read -r -p "$prompt_text [y/N]: " answer </dev/tty
-  else
-    read -r -p "$prompt_text [y/N]: " answer
-  fi
+  answer="$(read_from_terminal "$prompt_text [y/N]: ")"
   case "$answer" in
     y|Y|yes|YES) return 0 ;;
     *) return 1 ;;
@@ -27,30 +35,19 @@ confirm() {
 }
 
 print_preflight() {
-  echo "BanBot installer preflight"
+  echo "BanBot install preflight"
   echo
-  echo "This installer WILL:"
-  echo "  - create or reuse locked non-login user: $APP_USER"
-  echo "  - clone/update repo at: $APP_DIR"
-  echo "  - create/update Docker Compose files for the BanBot container"
-  echo "  - create/update /etc/cron.d/discord-trap-ban-bot for BanBot repo/image updates"
+  echo "Will install BanBot at $APP_DIR as locked user $APP_USER."
+  echo "Will not edit nginx/firewall/domain config or publish any ports."
+  echo "Will not stop, restart, prune, or remove unrelated Docker containers/images."
   echo
-  echo "This installer WILL NOT:"
-  echo "  - edit nginx config"
-  echo "  - edit ufw/firewalld rules"
-  echo "  - expose or publish any container ports"
-  echo "  - bind to ports 80, 443, or any app/domain port"
-  echo "  - change existing domain or reverse-proxy routing"
-  echo "  - stop, restart, prune, or remove unrelated Docker containers/images"
-  echo
-  if command -v ss >/dev/null 2>&1; then
-    echo "Currently listening TCP ports:"
-    ss -ltnp 2>/dev/null | sed -n '1,12p' || true
+  if [ "${BANBOT_VERBOSE:-0}" = "1" ] && command -v ss >/dev/null 2>&1; then
+    echo "Listening TCP ports:"
+    ss -ltnp 2>/dev/null | sed -n '1,8p' || true
     echo
   fi
   if systemctl list-unit-files nginx.service >/dev/null 2>&1; then
-    echo "nginx detected. It will not be modified or restarted."
-    echo
+    echo "nginx detected; it will not be modified or restarted."
   fi
   if command -v docker >/dev/null 2>&1; then
     echo "Docker detected."
@@ -156,18 +153,10 @@ prompt() {
   local default="${2:-}"
   local value
   if [ -n "$default" ]; then
-    if [ -r /dev/tty ]; then
-      read -r -p "$label [$default]: " value </dev/tty
-    else
-      read -r -p "$label [$default]: " value
-    fi
+    value="$(read_from_terminal "$label [$default]: ")"
     echo "${value:-$default}"
   else
-    if [ -r /dev/tty ]; then
-      read -r -p "$label: " value </dev/tty
-    else
-      read -r -p "$label: " value
-    fi
+    value="$(read_from_terminal "$label: ")"
     echo "$value"
   fi
 }
