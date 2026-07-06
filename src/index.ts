@@ -65,7 +65,18 @@ async function main(): Promise<void> {
   });
 
   client.on(Events.InteractionCreate, async (interaction) => {
-    if (interaction.isChatInputCommand()) await handleInteraction(interaction, config, store);
+    if (!interaction.isChatInputCommand()) return;
+    try {
+      await handleInteraction(interaction, config, store);
+    } catch (error) {
+      logger.error("Interaction failed", { command: interaction.commandName, error: String(error) });
+      const content = "BanBot hit an internal error. Check the server logs with `/home/banbot/BanBot/status.sh`.";
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content, ephemeral: true }).catch(() => undefined);
+      } else {
+        await interaction.reply({ content, ephemeral: true }).catch(() => undefined);
+      }
+    }
   });
 
   async function shutdown(signal: string): Promise<void> {

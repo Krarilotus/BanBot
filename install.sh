@@ -201,12 +201,15 @@ services:
     tmpfs:
       - /tmp
     volumes:
-      - banbot-data:/data
+      - ./data:/data
     init: true
-
-volumes:
-  banbot-data:
 EOF
+}
+
+ensure_data_dir() {
+  mkdir -p "$APP_DIR/data"
+  chown 1000:1000 "$APP_DIR/data"
+  chmod 700 "$APP_DIR/data"
 }
 
 write_helpers() {
@@ -315,8 +318,10 @@ if [ ! -f "$APP_DIR/docker-compose.yml" ]; then
   write_compose
 fi
 write_helpers
+ensure_data_dir
 write_cron
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+chown 1000:1000 "$APP_DIR/data"
 git config --global --add safe.directory "$APP_DIR" || true
 chmod 600 "$APP_DIR/.env"
 

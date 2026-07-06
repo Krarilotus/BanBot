@@ -11,8 +11,5 @@ services:
     tmpfs:
       - /tmp
     volumes:
-      - banbot-data:/data
+      - ./data:/data
     init: true
-
-volumes:
-  banbot-data:

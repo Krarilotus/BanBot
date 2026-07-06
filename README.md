@@ -57,7 +57,7 @@ Keep the first test in dry-run mode. When it behaves correctly:
 - Starts in dry-run mode.
 - Requires the exact Discord-side confirmation `enable ban mode` before real bans.
 - Deletes up to the configured number of seconds of the banned user's prior messages.
-- Stores per-server config in `/data/config.json` inside a Docker volume.
+- Stores per-server config in `/home/banbot/BanBot/data/config.json`, mounted into the container at `/data/config.json`.
 
 It does not read message content, store messages, manage roles, scan all channels, or need Administrator.
 
