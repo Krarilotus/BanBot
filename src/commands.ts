@@ -145,10 +145,8 @@ export async function handleBanbotInteraction(
 export function formatStatus(config: GuildConfig | undefined): string {
   if (!config) return "BanBot is not configured for this server yet. Run `/banbot setup trap_channel:#channel`.";
   const trapChannels = config.trapChannelIds.length > 0 ? config.trapChannelIds.map((id) => `<#${id}>`).join(", ") : "not set";
-  const logChannel = config.logChannelId ? `<#${config.logChannelId}>` : "disabled";
   return [
     `Trap channels: ${trapChannels}`,
-    `Log channel: ${logChannel}`,
     `Mode: ${effectiveActionMode(config)}${config.actionMode === "ban" && !config.banConfirmed ? " (ban requested but not confirmed)" : ""}`,
     `Users with roles: ${config.roleUserAction ?? "ignore"}`,
     `Role-user delete seconds: ${config.roleUserDeleteMessageSeconds ?? 600}`,
