@@ -1,0 +1,31 @@
+{
+  "name": "discord-trap-ban-bot",
+  "version": "1.0.0",
+  "description": "Minimal self-hosted Discord trap-channel ban bot.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/src/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test \"dist/src/**/*.test.js\"",
+    "invite": "tsx scripts/print-invite-url.ts",
+    "validate-config": "tsx src/index.ts validate-config"
+  },
+  "dependencies": {
+    "discord.js": "^14.26.4",
+    "dotenv": "^16.4.7"
+  },
+  "overrides": {
+    "undici": "6.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

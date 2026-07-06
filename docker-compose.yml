@@ -1,0 +1,14 @@
+services:
+  discord-trap-ban-bot:
+    build: .
+    image: ${BANBOT_IMAGE:-ghcr.io/krarilotus/banbot:latest}
+    container_name: discord-trap-ban-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    init: true
