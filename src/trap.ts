@@ -1,5 +1,5 @@
 import { PermissionFlagsBits, type GuildMember, type Message } from "discord.js";
-import type { Config } from "./config.js";
+import { effectiveActionMode, type GuildConfig } from "./guild-config.js";
 import type { Logger } from "./logger.js";
 
 export type TrapResult =
@@ -26,9 +26,10 @@ async function getMember(message: Message): Promise<GuildMember> {
   return message.guild!.members.fetch(message.author.id);
 }
 
-export async function handleTrapMessage(message: Message, config: Config, logger: Logger): Promise<TrapResult> {
+export async function handleTrapMessage(message: Message, guildConfig: GuildConfig | undefined, logger: Logger): Promise<TrapResult> {
   if (!message.guild) return { kind: "ignored", reason: "not a guild message" };
-  if (!config.trapChannelIds.has(message.channelId)) return { kind: "ignored", reason: "not a trap channel" };
+  if (!guildConfig) return { kind: "ignored", reason: "guild not configured" };
+  if (!guildConfig.trapChannelIds.includes(message.channelId)) return { kind: "ignored", reason: "not a trap channel" };
   if (message.author.bot) return { kind: "ignored", reason: "bot author" };
   if (message.client.user?.id === message.author.id) return { kind: "ignored", reason: "self message" };
   if (message.webhookId) return { kind: "ignored", reason: "webhook message" };
@@ -46,34 +47,34 @@ export async function handleTrapMessage(message: Message, config: Config, logger
     const botMember = message.guild.members.me ?? (await message.guild.members.fetchMe());
     if (!botMember.permissions.has(PermissionFlagsBits.BanMembers)) {
       const result = { kind: "failed" as const, userId: message.author.id, reason: "bot lacks Ban Members permission" };
-      await logger.logAction(message, config, result);
+      await logger.logAction(message, guildConfig, result);
       return result;
     }
 
     if (!member.bannable) {
       const result = { kind: "failed" as const, userId: message.author.id, reason: "target member is not bannable" };
-      await logger.logAction(message, config, result);
+      await logger.logAction(message, guildConfig, result);
       return result;
     }
 
-    if (config.actionMode === "dry-run") {
+    if (effectiveActionMode(guildConfig) === "dry-run") {
       const result = { kind: "dry-run" as const, userId: message.author.id, reason: "would ban roleless user in trap channel" };
-      await logger.logAction(message, config, result);
+      await logger.logAction(message, guildConfig, result);
       return result;
     }
 
     await member.ban({
-      deleteMessageSeconds: config.deleteMessageSeconds,
+      deleteMessageSeconds: guildConfig.deleteMessageSeconds,
       reason: `Trap channel hit: ${message.channelId}; user had only @everyone`,
     });
 
     await logger.notifyBan(message);
     const result = { kind: "banned" as const, userId: message.author.id, reason: "banned roleless user in trap channel" };
-    await logger.logAction(message, config, result);
+    await logger.logAction(message, guildConfig, result);
     return result;
   } catch (error) {
     const result = { kind: "failed" as const, userId: message.author.id, reason: "unexpected error", error };
-    await logger.logAction(message, config, result);
+    if (guildConfig) await logger.logAction(message, guildConfig, result);
     return result;
   } finally {
     releaseLater(key);

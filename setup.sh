@@ -22,7 +22,7 @@ prompt() {
 }
 
 write_env() {
-  local token="$1" client_id="$2" trap_ids="$3" log_id="$4" mode="$5" delete_seconds="$6" confirm="$7"
+  local token="$1" client_id="$2"
   umask 077
   cat > .env <<EOF
 # Discord bot token from the Discord Developer Portal.
@@ -31,21 +31,10 @@ DISCORD_TOKEN=$token
 # Discord application client ID, used for /banbot and invite URLs.
 CLIENT_ID=$client_id
 
-# Comma-separated trap channel IDs.
-TRAP_CHANNEL_IDS=$trap_ids
-
-# Optional mod-log channel ID.
-LOG_CHANNEL_ID=$log_id
-
-# dry-run = log only. ban = actually ban matching users.
-ACTION_MODE=$mode
-
-# Ban mode only works when ACTION_MODE=ban and CONFIRM_CONFIG=true.
-CONFIRM_CONFIG=$confirm
-
-# How many seconds of the banned user's recent messages Discord should delete.
-# Max: 604800 = 7 days.
-DELETE_MESSAGE_SECONDS=$delete_seconds
+# Server-specific settings are configured in Discord with /banbot setup.
+ACTION_MODE=dry-run
+DELETE_MESSAGE_SECONDS=86400
+CONFIG_PATH=/data/config.json
 
 # Leave empty to disable the local health endpoint.
 HEALTH_PORT=
@@ -68,23 +57,7 @@ fi
 
 token="$(prompt "Discord bot token")"
 client_id="$(prompt "Discord application client ID")"
-trap_ids="$(prompt "Trap channel IDs, comma separated")"
-log_id="$(prompt "Optional log channel ID")"
-mode="$(prompt "Mode: dry-run or ban" "dry-run")"
-delete_seconds="$(prompt "Delete messages for seconds" "86400")"
-confirm="false"
-
-if [ "$mode" = "ban" ]; then
-  read -r -p "Type EXACTLY \"enable ban mode\" to continue: " ban_confirm
-  if [ "$ban_confirm" = "enable ban mode" ]; then
-    confirm="true"
-  else
-    echo "Ban mode not confirmed. Using dry-run."
-    mode="dry-run"
-  fi
-fi
-
-write_env "$token" "$client_id" "$trap_ids" "$log_id" "$mode" "$delete_seconds" "$confirm"
+write_env "$token" "$client_id"
 
 echo
 echo "Created .env"
@@ -94,3 +67,4 @@ echo
 echo "Next:"
 echo "  docker compose up -d --build"
 echo "  docker compose logs -f"
+echo "  In Discord: /banbot setup trap_channel:#your-channel"

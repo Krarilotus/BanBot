@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { Message } from "discord.js";
-import type { Config } from "./config.js";
+import type { GuildConfig } from "./guild-config.js";
 import type { Logger } from "./logger.js";
 import { handleTrapMessage, hasAnyNonEveryoneRole } from "./trap.js";
 
@@ -19,13 +19,15 @@ describe("hasAnyNonEveryoneRole", () => {
   });
 });
 
-function config(overrides: Partial<Config> = {}): Config {
+function guildConfig(overrides: Partial<GuildConfig> = {}): GuildConfig {
   return {
-    discordToken: "token",
-    trapChannelIds: new Set(["trap-channel"]),
+    guildId: "guild-id",
+    trapChannelIds: ["trap-channel"],
     actionMode: "dry-run",
+    banConfirmed: false,
     deleteMessageSeconds: 86400,
-    healthHost: "127.0.0.1",
+    updatedAt: "2026-07-06T00:00:00.000Z",
+    updatedBy: "admin-id",
     ...overrides,
   };
 }
@@ -113,7 +115,7 @@ describe("handleTrapMessage", () => {
           banCalls += 1;
         },
       }),
-      config({ actionMode: "ban" }),
+      guildConfig({ actionMode: "ban", banConfirmed: true }),
       logs.instance,
     );
 
@@ -135,7 +137,7 @@ describe("handleTrapMessage", () => {
           banCalls += 1;
         },
       }),
-      config({ actionMode: "ban" }),
+      guildConfig({ actionMode: "ban", banConfirmed: true }),
       logs.instance,
     );
 
@@ -147,7 +149,7 @@ describe("handleTrapMessage", () => {
   it("dry-runs roleless users in trap channels by default", async () => {
     const logs = logger();
 
-    const result = await handleTrapMessage(message({ authorId: "dry-run-user" }), config(), logs.instance);
+    const result = await handleTrapMessage(message({ authorId: "dry-run-user" }), guildConfig(), logs.instance);
 
     assert.equal(result.kind, "dry-run");
     assert.equal(result.userId, "dry-run-user");
@@ -159,7 +161,7 @@ describe("handleTrapMessage", () => {
 
     const result = await handleTrapMessage(
       message({ authorId: "approved-user", roleIds: ["guild-id", "member-role"] }),
-      config(),
+      guildConfig(),
       logs.instance,
     );
 
@@ -178,7 +180,7 @@ describe("handleTrapMessage", () => {
           banOptions = options;
         },
       }),
-      config({ actionMode: "ban", deleteMessageSeconds: 123 }),
+      guildConfig({ actionMode: "ban", banConfirmed: true, deleteMessageSeconds: 123 }),
       logs.instance,
     );
 
@@ -188,5 +190,24 @@ describe("handleTrapMessage", () => {
       reason: "Trap channel hit: trap-channel; user had only @everyone",
     });
     assert.deepEqual(logs.calls, ["notifyBan", "logAction"]);
+  });
+
+  it("does not ban when ban mode was selected but not confirmed", async () => {
+    const logs = logger();
+    let banCalls = 0;
+
+    const result = await handleTrapMessage(
+      message({
+        authorId: "unconfirmed-ban-user",
+        ban: async () => {
+          banCalls += 1;
+        },
+      }),
+      guildConfig({ actionMode: "ban", banConfirmed: false }),
+      logs.instance,
+    );
+
+    assert.equal(result.kind, "dry-run");
+    assert.equal(banCalls, 0);
   });
 });

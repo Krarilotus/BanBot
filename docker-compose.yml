@@ -11,4 +11,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - banbot-data:/data
     init: true
+
+volumes:
+  banbot-data:

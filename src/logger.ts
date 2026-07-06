@@ -2,6 +2,7 @@ import { type Client, type Message } from "discord.js";
 import { version as discordJsVersion } from "discord.js";
 import pkg from "../package.json" with { type: "json" };
 import type { Config } from "./config.js";
+import { effectiveActionMode, type GuildConfig } from "./guild-config.js";
 import type { TrapResult } from "./trap.js";
 
 const maxDiscordLogLength = 1_800;
@@ -26,10 +27,9 @@ export class Logger {
       version: pkg.version,
       nodeVersion: process.version,
       discordJsVersion,
-      actionMode: config.actionMode,
-      trapChannelCount: config.trapChannelIds.size,
-      discordLogging: Boolean(config.logChannelId),
-      deleteMessageSeconds: config.deleteMessageSeconds,
+      defaultActionMode: config.defaultActionMode,
+      defaultDeleteMessageSeconds: config.defaultDeleteMessageSeconds,
+      runtimeConfigPath: config.runtimeConfigPath,
     });
   }
 
@@ -46,17 +46,17 @@ export class Logger {
     }
   }
 
-  async logAction(message: Message, config: Config, result: TrapResult): Promise<void> {
+  async logAction(message: Message, guildConfig: GuildConfig, result: TrapResult): Promise<void> {
     const payload = {
       guild: message.guild?.name,
       guildId: message.guildId,
-      actionMode: config.actionMode,
+      actionMode: effectiveActionMode(guildConfig),
       user: message.author.tag,
       userId: message.author.id,
       channelId: message.channelId,
       result: result.kind,
       reason: result.reason,
-      deleteMessageSeconds: config.deleteMessageSeconds,
+      deleteMessageSeconds: guildConfig.deleteMessageSeconds,
     };
 
     if (result.kind === "failed") {
@@ -65,8 +65,8 @@ export class Logger {
       this.info("trap action", payload);
     }
 
-    if (!config.logChannelId) return;
-    await this.sendDiscordLog(config.logChannelId, JSON.stringify(payload));
+    if (!guildConfig.logChannelId) return;
+    await this.sendDiscordLog(guildConfig.logChannelId, JSON.stringify(payload));
   }
 
   private async sendDiscordLog(channelId: string, content: string): Promise<void> {

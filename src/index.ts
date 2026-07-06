@@ -4,11 +4,11 @@ import {
   GatewayIntentBits,
   REST,
   Routes,
-  SlashCommandBuilder,
   type ChatInputCommandInteraction,
 } from "discord.js";
+import { buildBanbotCommand, handleBanbotInteraction } from "./commands.js";
 import { loadConfig } from "./config.js";
-import { banbotHelp } from "./help.js";
+import { GuildConfigStore } from "./guild-config.js";
 import { startHealthServer } from "./health.js";
 import { Logger } from "./logger.js";
 import { handleTrapMessage } from "./trap.js";
@@ -20,14 +20,17 @@ async function registerCommands(config: ReturnType<typeof loadConfig>, logger: L
   }
 
   const rest = new REST({ version: "10" }).setToken(config.discordToken);
-  const command = new SlashCommandBuilder().setName("banbot").setDescription("Show Trap Ban Bot setup instructions");
-  await rest.put(Routes.applicationCommands(config.clientId), { body: [command.toJSON()] });
+  await rest.put(Routes.applicationCommands(config.clientId), { body: [buildBanbotCommand().toJSON()] });
   logger.info("Registered /banbot command");
 }
 
-async function handleInteraction(interaction: ChatInputCommandInteraction): Promise<void> {
+async function handleInteraction(
+  interaction: ChatInputCommandInteraction,
+  config: ReturnType<typeof loadConfig>,
+  store: GuildConfigStore,
+): Promise<void> {
   if (!interaction.isChatInputCommand() || interaction.commandName !== "banbot") return;
-  await interaction.reply({ content: banbotHelp, ephemeral: true });
+  await handleBanbotInteraction(interaction, config, store);
 }
 
 async function main(): Promise<void> {
@@ -42,6 +45,7 @@ async function main(): Promise<void> {
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
   });
   const logger = new Logger(client);
+  const store = new GuildConfigStore(config.runtimeConfigPath);
   let ready = false;
   const healthServer = startHealthServer(config, () => ready);
 
@@ -57,11 +61,11 @@ async function main(): Promise<void> {
   });
 
   client.on(Events.MessageCreate, async (message) => {
-    await handleTrapMessage(message, config, logger);
+    await handleTrapMessage(message, message.guildId ? await store.get(message.guildId) : undefined, logger);
   });
 
   client.on(Events.InteractionCreate, async (interaction) => {
-    if (interaction.isChatInputCommand()) await handleInteraction(interaction);
+    if (interaction.isChatInputCommand()) await handleInteraction(interaction, config, store);
   });
 
   async function shutdown(signal: string): Promise<void> {

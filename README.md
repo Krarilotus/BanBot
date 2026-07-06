@@ -2,16 +2,47 @@
 
 Tiny self-hosted Discord bot for one job: watch configured trap channels and ban roleless human users who post there. It deletes recent messages through Discord's ban API, then posts `<username> banned` in the trap channel.
 
+## Fastest Setup
+
+On the server as root:
+
+```bash
+cd /root
+curl -fsSLO https://raw.githubusercontent.com/Krarilotus/BanBot/master/install.sh
+less install.sh
+bash install.sh
+```
+
+The installer asks only for:
+
+- Discord bot token
+- Discord application client ID
+
+It then installs Docker if needed, creates `/opt/discord-trap-ban-bot`, starts the bot, and prints the invite URL.
+
+After inviting the bot, configure it inside Discord as a server admin:
+
+```text
+/banbot setup trap_channel:#dont-post-here
+/banbot status
+```
+
+Keep the first test in dry-run mode. When it behaves correctly:
+
+```text
+/banbot setup mode:ban confirm_ban_mode:enable ban mode
+```
+
 ## What It Does
 
-- Watches only `TRAP_CHANNEL_IDS`.
-- Ignores bots, webhooks, other channels, and users with any role besides `@everyone`.
-- Starts in `dry-run` mode.
-- Requires `ACTION_MODE=ban` and `CONFIRM_CONFIG=true` before it can ban.
-- Deletes up to `DELETE_MESSAGE_SECONDS` of the banned user's prior messages.
-- Provides `/banbot` setup help after invite.
+- Watches only trap channels configured with `/banbot setup`.
+- Ignores bots, webhooks, other channels, itself, and users with any role besides `@everyone`.
+- Starts in dry-run mode.
+- Requires the exact Discord-side confirmation `enable ban mode` before real bans.
+- Deletes up to the configured number of seconds of the banned user's prior messages.
+- Stores per-server config in `/data/config.json` inside a Docker volume.
 
-It does not read message content, store messages, use a database, manage roles, scan all channels, or need Administrator.
+It does not read message content, store messages, manage roles, scan all channels, or need Administrator.
 
 ## Required Discord Permissions
 
@@ -23,41 +54,63 @@ Invite the bot with only:
 
 The invite scope is `bot applications.commands` so `/banbot` can work. Do not give the bot Administrator.
 
-## Quick Start
-
-For a server install without Node.js or Git:
-
-```bash
-curl -fsSLO https://raw.githubusercontent.com/Krarilotus/BanBot/master/install.sh
-less install.sh
-sudo bash install.sh
-```
-
-For local development:
-
-```bash
-npm install
-cp .env.example .env
-npm run invite
-docker compose up -d --build
-docker compose logs -f
-```
-
-The installer creates `/opt/discord-trap-ban-bot`, writes `.env`, pulls `ghcr.io/krarilotus/banbot:latest`, starts the bot, and prints the invite URL.
-
 ## Discord Developer Portal Setup
 
 1. Go to the Discord Developer Portal.
 2. Create a new application and bot.
-3. Copy the bot token into setup when asked.
-4. Copy the application client ID into setup when asked.
+3. Copy the bot token for the installer.
+4. Copy the application client ID for the installer.
 5. Do not enable Message Content Intent.
 6. Do not enable Server Members Intent.
 7. Do not enable Presence Intent.
 8. Use the generated invite URL.
 9. Move the bot role high enough to ban roleless users.
 
-## Server Setup
+## Discord Admin Commands
+
+Show help:
+
+```text
+/banbot help
+```
+
+Configure the trap channel:
+
+```text
+/banbot setup trap_channel:#dont-post-here
+```
+
+Optional log channel:
+
+```text
+/banbot setup log_channel:#mod-log
+```
+
+Change deleted message history window:
+
+```text
+/banbot setup delete_seconds:86400
+```
+
+Enable real bans deliberately:
+
+```text
+/banbot setup mode:ban confirm_ban_mode:enable ban mode
+```
+
+Go back to dry-run:
+
+```text
+/banbot setup mode:dry-run
+```
+
+Check current config:
+
+```text
+/banbot status
+```
+
+## Trap Channel Setup
 
 Create a trap channel such as `#dont-post-here`.
 
@@ -71,67 +124,61 @@ For the bot role, allow:
 - View Channel
 - Send Messages
 
-Optional log channel:
+Recommended topic:
 
-- View Channel
-- Send Messages
+```text
+Automated moderation trap. Do not post here. Accounts with no roles that post here may be banned automatically.
+```
 
-## Configuration
+## Server Config
+
+The server `.env` only contains bootstrap settings:
 
 ```bash
 DISCORD_TOKEN=
 CLIENT_ID=
-TRAP_CHANNEL_IDS=
-LOG_CHANNEL_ID=
 ACTION_MODE=dry-run
-CONFIRM_CONFIG=false
 DELETE_MESSAGE_SECONDS=86400
+CONFIG_PATH=/data/config.json
 HEALTH_PORT=
 HEALTH_HOST=127.0.0.1
 ```
 
-Validate config without logging into Discord:
+Trap channels, log channel, mode, and delete window are configured in Discord with `/banbot setup`.
+
+Validate bootstrap config without logging into Discord:
 
 ```bash
 docker compose run --rm discord-trap-ban-bot validate-config
 ```
 
-## Testing And Ban Mode
+## Testing
 
-Start with `ACTION_MODE=dry-run`. Send a message in the trap channel from a test user that has only `@everyone`; logs should say it would ban. Give that user any role and confirm the bot ignores them.
-
-To enable real bans:
-
-```bash
-nano .env
-```
-
-Set:
-
-```bash
-ACTION_MODE=ban
-CONFIRM_CONFIG=true
-```
-
-Then restart:
-
-```bash
-docker compose up -d
-docker compose logs -f
-```
+1. Run `/banbot setup trap_channel:#your-trap-channel`.
+2. Make sure mode is dry-run with `/banbot status`.
+3. Send a message in the trap channel from a test account that has only `@everyone`.
+4. Confirm logs say it would ban.
+5. Give the test account any real role and confirm the bot ignores it.
+6. Enable ban mode only with a disposable test account.
 
 ## Updating
-
-Repo deployment:
-
-```bash
-./update.sh
-```
 
 Installer deployment:
 
 ```bash
-sudo /opt/discord-trap-ban-bot/update.sh
+/opt/discord-trap-ban-bot/update.sh
+```
+
+Status:
+
+```bash
+/opt/discord-trap-ban-bot/status.sh
+```
+
+Uninstall container while keeping config:
+
+```bash
+/opt/discord-trap-ban-bot/uninstall.sh
 ```
 
 ## Server Hardening
@@ -141,9 +188,9 @@ No public inbound ports, reverse proxy, domain, TLS certificate, or database are
 Recommended basics:
 
 ```bash
-sudo ufw allow OpenSSH
-sudo ufw enable
-sudo ufw status
+ufw allow OpenSSH
+ufw enable
+ufw status
 ```
 
 Use SSH keys, keep the server updated, and do not run the bot directly as root outside Docker.
@@ -161,11 +208,13 @@ Logs may contain guild IDs, channel IDs, user IDs, usernames/tags, and action re
 
 ## Troubleshooting
 
-Bot logs in but does nothing: check `TRAP_CHANNEL_IDS`, channel visibility, and that the message was from a human user in a guild trap channel.
+Bot logs in but `/banbot` does not appear: reinvite the bot with the generated URL, which includes `applications.commands`.
+
+Bot logs in but does nothing: run `/banbot status`, check the trap channel, and confirm the message came from a human user with only `@everyone`.
 
 User is not bannable: move the bot role higher, confirm the target has no real role, and confirm the bot has Ban Members.
 
-Bot cannot send logs or ban notices: check View Channel and Send Messages in the target channel.
+Bot cannot send logs or ban notices: check View Channel and Send Messages.
 
 Bot exits immediately: run `validate-config` and check `.env`.
 

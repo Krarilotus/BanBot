@@ -67,7 +67,12 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - banbot-data:/data
     init: true
+
+volumes:
+  banbot-data:
 EOF
 }
 
@@ -116,22 +121,9 @@ write_env() {
     return
   fi
 
-  local token client_id trap_ids log_id mode delete_seconds confirm
+  local token client_id
   token="$(prompt "Discord bot token")"
   client_id="$(prompt "Discord application client ID")"
-  trap_ids="$(prompt "Trap channel IDs, comma separated")"
-  log_id="$(prompt "Optional log channel ID")"
-  mode="$(prompt "Mode: dry-run or ban" "dry-run")"
-  delete_seconds="$(prompt "Delete message history seconds" "86400")"
-  confirm="false"
-  if [ "$mode" = "ban" ]; then
-    read -r -p "Type EXACTLY \"enable ban mode\" to continue: " ban_confirm
-    if [ "$ban_confirm" = "enable ban mode" ]; then
-      confirm="true"
-    else
-      mode="dry-run"
-    fi
-  fi
 
   umask 077
   cat > "$APP_DIR/.env" <<EOF
@@ -141,20 +133,10 @@ DISCORD_TOKEN=$token
 # Discord application client ID, used for /banbot and invite URLs.
 CLIENT_ID=$client_id
 
-# Comma-separated trap channel IDs.
-TRAP_CHANNEL_IDS=$trap_ids
-
-# Optional mod-log channel ID.
-LOG_CHANNEL_ID=$log_id
-
-# dry-run = log only. ban = actually ban matching users.
-ACTION_MODE=$mode
-
-# Required safety confirmation for ban mode.
-CONFIRM_CONFIG=$confirm
-
-# How many seconds of recent messages Discord should delete on ban.
-DELETE_MESSAGE_SECONDS=$delete_seconds
+# Server-specific settings are configured by a Discord admin with /banbot setup.
+ACTION_MODE=dry-run
+DELETE_MESSAGE_SECONDS=86400
+CONFIG_PATH=/data/config.json
 
 HEALTH_PORT=
 HEALTH_HOST=127.0.0.1
@@ -192,5 +174,9 @@ echo "Useful commands:"
 echo "  sudo $APP_DIR/status.sh"
 echo "  sudo $APP_DIR/update.sh"
 echo "  sudo $APP_DIR/uninstall.sh"
+echo
+echo "In Discord, run:"
+echo "  /banbot setup trap_channel:#your-trap-channel"
+echo "  /banbot status"
 echo "Daily image updates are configured in /etc/cron.d/discord-trap-ban-bot"
 docker compose logs --tail=80

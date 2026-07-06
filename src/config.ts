@@ -5,12 +5,11 @@ export type ActionMode = "dry-run" | "ban";
 export interface Config {
   discordToken: string;
   clientId?: string;
-  trapChannelIds: Set<string>;
-  logChannelId?: string;
-  actionMode: ActionMode;
-  deleteMessageSeconds: number;
+  defaultActionMode: ActionMode;
+  defaultDeleteMessageSeconds: number;
   healthHost: string;
   healthPort?: number;
+  runtimeConfigPath: string;
 }
 
 const snowflakePattern = /^\d{17,20}$/;
@@ -20,34 +19,18 @@ function optional(value: string | undefined): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function parseSnowflakeList(value: string | undefined): string[] {
-  return (value ?? "")
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const errors: string[] = [];
   const discordToken = optional(env.DISCORD_TOKEN);
   const clientId = optional(env.CLIENT_ID);
-  const logChannelId = optional(env.LOG_CHANNEL_ID);
-  const trapChannelIds = parseSnowflakeList(env.TRAP_CHANNEL_IDS);
   const rawActionMode = optional(env.ACTION_MODE) ?? "dry-run";
   const rawDeleteSeconds = optional(env.DELETE_MESSAGE_SECONDS) ?? "86400";
-  const confirmConfig = optional(env.CONFIRM_CONFIG) ?? "false";
   const healthHost = optional(env.HEALTH_HOST) ?? "127.0.0.1";
   const rawHealthPort = optional(env.HEALTH_PORT);
+  const runtimeConfigPath = optional(env.CONFIG_PATH) ?? "/data/config.json";
 
   if (!discordToken) errors.push("DISCORD_TOKEN is required");
   if (clientId && !snowflakePattern.test(clientId)) errors.push("CLIENT_ID must look like a Discord snowflake");
-  if (trapChannelIds.length === 0) errors.push("TRAP_CHANNEL_IDS is required");
-  for (const id of trapChannelIds) {
-    if (!snowflakePattern.test(id)) errors.push(`TRAP_CHANNEL_IDS contains invalid ID: ${id}`);
-  }
-  if (logChannelId && !snowflakePattern.test(logChannelId)) {
-    errors.push("LOG_CHANNEL_ID must look like a Discord snowflake");
-  }
   if (rawActionMode !== "dry-run" && rawActionMode !== "ban") {
     errors.push("ACTION_MODE must be exactly dry-run or ban");
   }
@@ -65,23 +48,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     }
   }
 
-  if (rawActionMode === "ban" && confirmConfig !== "true") {
-    errors.push("ACTION_MODE=ban requires CONFIRM_CONFIG=true");
-  }
-
   if (errors.length > 0 || !discordToken || (rawActionMode !== "dry-run" && rawActionMode !== "ban")) {
     throw new Error(`Invalid configuration:\n- ${errors.join("\n- ")}`);
   }
 
   const config: Config = {
     discordToken,
-    trapChannelIds: new Set(trapChannelIds),
-    actionMode: rawActionMode,
-    deleteMessageSeconds,
+    defaultActionMode: rawActionMode,
+    defaultDeleteMessageSeconds: deleteMessageSeconds,
     healthHost,
+    runtimeConfigPath,
   };
   if (clientId) config.clientId = clientId;
-  if (logChannelId) config.logChannelId = logChannelId;
   if (healthPort) config.healthPort = healthPort;
   return config;
 }

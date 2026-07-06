@@ -11,7 +11,7 @@ export function startHealthServer(config: Config, isReady: () => boolean): Serve
     }
 
     response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ ok: true, ready: isReady(), mode: config.actionMode }) + "\n");
+    response.end(JSON.stringify({ ok: true, ready: isReady(), defaultMode: config.defaultActionMode }) + "\n");
   });
 
   server.listen(config.healthPort, config.healthHost);
