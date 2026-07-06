@@ -29,7 +29,7 @@ print_preflight() {
   echo "  - create or reuse locked non-login user: $APP_USER"
   echo "  - clone/update repo at: $APP_DIR"
   echo "  - create/update Docker Compose files for the BanBot container"
-  echo "  - create/update /etc/cron.d/discord-trap-ban-bot for BanBot image updates"
+  echo "  - create/update /etc/cron.d/discord-trap-ban-bot for BanBot repo/image updates"
   echo
   echo "This installer WILL NOT:"
   echo "  - edit nginx config"
@@ -37,6 +37,7 @@ print_preflight() {
   echo "  - expose or publish any container ports"
   echo "  - bind to ports 80, 443, or any app/domain port"
   echo "  - change existing domain or reverse-proxy routing"
+  echo "  - stop, restart, prune, or remove unrelated Docker containers/images"
   echo
   if command -v ss >/dev/null 2>&1; then
     echo "Currently listening TCP ports:"
@@ -232,7 +233,7 @@ write_cron() {
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-17 4 * * * root cd "$APP_DIR" && git pull --ff-only >/var/log/discord-trap-ban-bot-update.log 2>&1 && docker compose pull >>/var/log/discord-trap-ban-bot-update.log 2>&1 && docker compose up -d >>/var/log/discord-trap-ban-bot-update.log 2>&1 && docker image prune -f >>/var/log/discord-trap-ban-bot-update.log 2>&1
+17 4 * * * root cd "$APP_DIR" && git pull --ff-only >/var/log/discord-trap-ban-bot-update.log 2>&1 && docker compose pull >>/var/log/discord-trap-ban-bot-update.log 2>&1 && docker compose up -d >>/var/log/discord-trap-ban-bot-update.log 2>&1
 EOF
   chmod 644 /etc/cron.d/discord-trap-ban-bot
 }
