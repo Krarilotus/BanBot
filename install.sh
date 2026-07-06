@@ -102,6 +102,15 @@ prompt() {
   fi
 }
 
+require_value() {
+  local name="$1"
+  local value="$2"
+  if [ -z "$value" ]; then
+    echo "$name cannot be empty. Cancelled."
+    exit 1
+  fi
+}
+
 write_compose() {
   cat > "$APP_DIR/docker-compose.yml" <<EOF
 services:
@@ -178,8 +187,24 @@ write_env() {
   fi
 
   local token client_id
-  token="$(prompt "Discord bot token")"
-  client_id="$(prompt "Discord application client ID")"
+  echo
+  echo "Before continuing, create the bot in the Discord Developer Portal:"
+  echo "  1. Open https://discord.com/developers/applications"
+  echo "  2. Select or create your BanBot application."
+  echo "  3. General Information -> copy Application ID. This is the client ID."
+  echo "  4. Bot -> Reset Token -> copy the real token."
+  echo "  5. Bot -> Privileged Gateway Intents -> leave Presence, Server Members, and Message Content OFF."
+  echo
+  echo "Press Ctrl+C now if you do not have the real token and application ID yet."
+  echo
+  token="$(prompt "Real Discord bot token from Bot -> Reset Token")"
+  client_id="$(prompt "Application ID from General Information")"
+  require_value "Discord bot token" "$token"
+  require_value "Application ID" "$client_id"
+  if ! [[ "$client_id" =~ ^[0-9]{17,20}$ ]]; then
+    echo "Application ID must be a Discord snowflake, for example 123456789012345678."
+    exit 1
+  fi
 
   umask 077
   cat > "$APP_DIR/.env" <<EOF

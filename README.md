@@ -4,6 +4,23 @@ Tiny self-hosted Discord bot for one job: watch configured trap channels and ban
 
 ## Fastest Setup
 
+### 1. Create The Discord Bot
+
+Do this in the Discord Developer Portal before running the server installer:
+
+1. Open <https://discord.com/developers/applications>.
+2. Click **New Application** or select your existing BanBot application.
+3. Open **General Information** and copy **Application ID**. The installer calls this the Discord application client ID.
+4. Open **Bot**.
+5. Click **Reset Token** and copy the real bot token. A random string will not work.
+6. Under **Privileged Gateway Intents**, leave these OFF:
+   - Presence Intent
+   - Server Members Intent
+   - Message Content Intent
+7. Do not use the permissions checkboxes on that page; the installer prints the correct invite URL later.
+
+### 2. Run The Server Installer
+
 On the server as root:
 
 ```bash
@@ -12,8 +29,8 @@ curl -fsSL https://raw.githubusercontent.com/Krarilotus/BanBot/master/install.sh
 
 The installer asks only for:
 
-- Discord bot token
-- Discord application client ID
+- the real Discord bot token from **Bot -> Reset Token**
+- the **Application ID** from **General Information**
 
 It then installs Docker and git if needed, creates a locked non-login `banbot` user, clones this repo to `/home/banbot/BanBot`, starts the bot, and prints the invite URL.
 
@@ -51,17 +68,15 @@ Invite the bot with only:
 
 The invite scope is `bot applications.commands` so `/banbot` can work. Do not give the bot Administrator.
 
-## Discord Developer Portal Setup
+## Discord Developer Portal Notes
 
-1. Go to the Discord Developer Portal.
-2. Create a new application and bot.
-3. Copy the bot token for the installer.
-4. Copy the application client ID for the installer.
-5. Do not enable Message Content Intent.
-6. Do not enable Server Members Intent.
-7. Do not enable Presence Intent.
-8. Use the generated invite URL.
-9. Move the bot role high enough to ban roleless users.
+The Bot page has a token button and many permission/intents checkboxes. For this bot:
+
+- Use **Reset Token** to get the token for the installer.
+- Use **General Information -> Application ID** as the client ID.
+- Keep all privileged gateway intents off.
+- Do not give Administrator.
+- Use the invite URL printed by the installer.
 
 ## Discord Admin Commands
 
