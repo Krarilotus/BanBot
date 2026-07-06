@@ -24,6 +24,22 @@ read_from_terminal() {
   printf "%s" "$value"
 }
 
+read_secret_from_terminal() {
+  local prompt_text="$1"
+  local value
+  if [ -e /dev/tty ]; then
+    printf "%s" "$prompt_text" >/dev/tty
+    stty -echo </dev/tty
+    IFS= read -r value </dev/tty || value=""
+    stty echo </dev/tty
+    printf "\n" >/dev/tty
+  else
+    read -r -s -p "$prompt_text" value || value=""
+    printf "\n"
+  fi
+  printf "%s" "$value"
+}
+
 confirm() {
   local prompt_text="$1"
   local answer
@@ -256,7 +272,7 @@ write_env() {
   echo
   echo "Press Ctrl+C now if you do not have the real token and application ID yet."
   echo
-  token="$(prompt "Real Discord bot token from Bot -> Reset Token")"
+  token="$(read_secret_from_terminal "Real Discord bot token from Bot -> Reset Token: ")"
   client_id="$(prompt "Application ID from General Information")"
   require_value "Discord bot token" "$token"
   require_value "Application ID" "$client_id"
