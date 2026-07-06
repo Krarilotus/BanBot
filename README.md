@@ -44,7 +44,7 @@ After inviting the bot, configure it inside Discord as a server admin:
 /banbot status
 ```
 
-Keep the first test in dry-run mode. To kick users who have roles instead of ignoring them:
+Keep the first test in dry-run mode. To soft-kick users who have roles and delete their last 10 minutes of messages:
 
 ```text
 /banbot setup role_user_action:kick
@@ -60,7 +60,8 @@ When dry-run behaves correctly:
 
 - Watches only trap channels configured with `/banbot setup`.
 - Ignores bots, webhooks, other channels, and itself.
-- By default, ignores users with roles. You can configure role users to be kicked or banned.
+- By default, ignores users with roles. You can configure role users to be soft-kicked or banned.
+- A soft-kick temporarily bans and immediately unbans the user so Discord deletes their recent messages.
 - Starts in dry-run mode.
 - Requires the exact Discord-side confirmation `enable ban mode` before real bans.
 - Deletes up to the configured number of seconds of the banned user's prior messages.
@@ -73,7 +74,6 @@ It does not read message content, store messages, manage roles, scan all channel
 Invite the bot with only:
 
 - View Channels
-- Kick Members
 - Ban Members
 - Send Messages
 
@@ -109,10 +109,16 @@ Optional log channel:
 /banbot setup log_channel:#mod-log
 ```
 
-Kick users who have roles instead of ignoring them:
+Soft-kick users who have roles instead of ignoring them:
 
 ```text
 /banbot setup role_user_action:kick
+```
+
+Change how much message history gets deleted for role-user soft-kicks:
+
+```text
+/banbot setup role_user_delete_seconds:600
 ```
 
 Change deleted message history window:
@@ -188,7 +194,7 @@ docker compose run --rm discord-trap-ban-bot validate-config
 3. Send a message in the trap channel from a test account that has only `@everyone`.
 4. Confirm logs say it would ban.
 5. Give the test account any real role and confirm the bot ignores it by default.
-6. Optionally run `/banbot setup role_user_action:kick` and confirm dry-run says it would kick users with roles.
+6. Optionally run `/banbot setup role_user_action:kick` and confirm dry-run says it would soft-kick users with roles.
 7. Enable ban mode only with a disposable test account.
 
 ## Updating

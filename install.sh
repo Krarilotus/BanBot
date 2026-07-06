@@ -331,7 +331,7 @@ docker compose run --rm discord-trap-ban-bot validate-config
 docker compose up -d
 
 client_id="$(grep '^CLIENT_ID=' "$APP_DIR/.env" | cut -d= -f2-)"
-permissions="3078"
+permissions="3076"
 echo
 echo "Invite your bot with this URL:"
 echo "https://discord.com/oauth2/authorize?client_id=${client_id}&permissions=${permissions}&integration_type=0&scope=bot%20applications.commands"

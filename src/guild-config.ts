@@ -10,6 +10,7 @@ export interface GuildConfig {
   logChannelId?: string;
   actionMode: ActionMode;
   roleUserAction: RoleUserAction;
+  roleUserDeleteMessageSeconds: number;
   deleteMessageSeconds: number;
   banConfirmed: boolean;
   updatedAt: string;
@@ -59,6 +60,7 @@ export function defaultsForGuild(guildId: string, config: Config, updatedBy: str
     trapChannelIds: [],
     actionMode: config.defaultActionMode,
     roleUserAction: "ignore",
+    roleUserDeleteMessageSeconds: 600,
     deleteMessageSeconds: config.defaultDeleteMessageSeconds,
     banConfirmed: false,
     updatedAt: new Date().toISOString(),

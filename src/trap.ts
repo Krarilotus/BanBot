@@ -50,23 +50,27 @@ export async function handleTrapMessage(message: Message, guildConfig: GuildConf
     }
 
     if (hasRoles && roleUserAction === "kick") {
-      if (!botMember.permissions.has(PermissionFlagsBits.KickMembers)) {
-        const result = { kind: "failed" as const, userId: message.author.id, reason: "bot lacks Kick Members permission" };
+      if (!botMember.permissions.has(PermissionFlagsBits.BanMembers)) {
+        const result = { kind: "failed" as const, userId: message.author.id, reason: "bot lacks Ban Members permission for role-user soft-kick" };
         await logger.logAction(message, guildConfig, result);
         return result;
       }
-      if (!member.kickable) {
-        const result = { kind: "failed" as const, userId: message.author.id, reason: "target member is not kickable" };
+      if (!member.bannable) {
+        const result = { kind: "failed" as const, userId: message.author.id, reason: "target member is not soft-kickable" };
         await logger.logAction(message, guildConfig, result);
         return result;
       }
       if (effectiveActionMode(guildConfig) === "dry-run") {
-        const result = { kind: "dry-run" as const, userId: message.author.id, reason: "would kick user with roles in trap channel" };
+        const result = { kind: "dry-run" as const, userId: message.author.id, reason: "would soft-kick user with roles and delete recent messages" };
         await logger.logAction(message, guildConfig, result);
         return result;
       }
-      await member.kick(`Trap channel hit: ${message.channelId}; user had roles`);
-      const result = { kind: "kicked" as const, userId: message.author.id, reason: "kicked user with roles in trap channel" };
+      await member.ban({
+        deleteMessageSeconds: guildConfig.roleUserDeleteMessageSeconds ?? 600,
+        reason: `Trap channel soft-kick: ${message.channelId}; user had roles`,
+      });
+      await message.guild.members.unban(message.author.id, `Trap channel soft-kick release: ${message.channelId}`);
+      const result = { kind: "kicked" as const, userId: message.author.id, reason: "soft-kicked user with roles and deleted recent messages" };
       await logger.logAction(message, guildConfig, result);
       return result;
     }

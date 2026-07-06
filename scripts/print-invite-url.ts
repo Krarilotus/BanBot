@@ -10,7 +10,6 @@ if (!clientId || !/^\d{17,20}$/.test(clientId)) {
 
 const permissions =
   PermissionFlagsBits.ViewChannel |
-  PermissionFlagsBits.KickMembers |
   PermissionFlagsBits.BanMembers |
   PermissionFlagsBits.SendMessages;
 

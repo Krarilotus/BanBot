@@ -25,6 +25,7 @@ function guildConfig(overrides: Partial<GuildConfig> = {}): GuildConfig {
     trapChannelIds: ["trap-channel"],
     actionMode: "dry-run",
     roleUserAction: "ignore",
+    roleUserDeleteMessageSeconds: 600,
     banConfirmed: false,
     deleteMessageSeconds: 86400,
     updatedAt: "2026-07-06T00:00:00.000Z",
@@ -60,6 +61,7 @@ function message(options: {
   botCanKick?: boolean;
   ban?: () => Promise<void>;
   kick?: () => Promise<void>;
+  unban?: () => Promise<void>;
 } = {}): Message {
   const guildId = "guild-id";
   const authorId = options.authorId ?? "user-id";
@@ -98,6 +100,7 @@ function message(options: {
           },
         }),
         fetch: async () => ({ id: authorId }),
+        unban: options.unban ?? (async () => undefined),
       },
     },
     member: {
@@ -184,14 +187,14 @@ describe("handleTrapMessage", () => {
 
   it("dry-runs kicking users with roles when configured", async () => {
     const logs = logger();
-    let kickCalls = 0;
+    let banCalls = 0;
 
     const result = await handleTrapMessage(
       message({
         authorId: "role-user-dry-run",
         roleIds: ["guild-id", "member-role"],
-        kick: async () => {
-          kickCalls += 1;
+        ban: async () => {
+          banCalls += 1;
         },
       }),
       guildConfig({ roleUserAction: "kick" }),
@@ -199,20 +202,24 @@ describe("handleTrapMessage", () => {
     );
 
     assert.equal(result.kind, "dry-run");
-    assert.equal(kickCalls, 0);
+    assert.equal(banCalls, 0);
     assert.deepEqual(logs.calls, ["logAction"]);
   });
 
-  it("kicks users with roles in ban mode when configured", async () => {
+  it("soft-kicks users with roles in ban mode and deletes recent messages", async () => {
     const logs = logger();
-    let kickReason: unknown;
+    let banOptions: unknown;
+    let unbanReason: unknown;
 
     const result = await handleTrapMessage(
       message({
         authorId: "role-user-kick",
         roleIds: ["guild-id", "member-role"],
-        kick: async (reason?: unknown) => {
-          kickReason = reason;
+        ban: async (options?: unknown) => {
+          banOptions = options;
+        },
+        unban: async (_userId?: unknown, reason?: unknown) => {
+          unbanReason = reason;
         },
       }),
       guildConfig({ actionMode: "ban", banConfirmed: true, roleUserAction: "kick" }),
@@ -220,18 +227,50 @@ describe("handleTrapMessage", () => {
     );
 
     assert.equal(result.kind, "kicked");
-    assert.equal(kickReason, "Trap channel hit: trap-channel; user had roles");
+    assert.deepEqual(banOptions, {
+      deleteMessageSeconds: 600,
+      reason: "Trap channel soft-kick: trap-channel; user had roles",
+    });
+    assert.equal(unbanReason, "Trap channel soft-kick release: trap-channel");
     assert.deepEqual(logs.calls, ["logAction"]);
   });
 
-  it("fails role-user kick when the bot lacks Kick Members", async () => {
+  it("uses configured role-user message deletion seconds for soft-kicks", async () => {
+    const logs = logger();
+    let banOptions: unknown;
+
+    const result = await handleTrapMessage(
+      message({
+        authorId: "role-user-kick-custom-delete",
+        roleIds: ["guild-id", "member-role"],
+        ban: async (options?: unknown) => {
+          banOptions = options;
+        },
+      }),
+      guildConfig({
+        actionMode: "ban",
+        banConfirmed: true,
+        roleUserAction: "kick",
+        roleUserDeleteMessageSeconds: 300,
+      }),
+      logs.instance,
+    );
+
+    assert.equal(result.kind, "kicked");
+    assert.deepEqual(banOptions, {
+      deleteMessageSeconds: 300,
+      reason: "Trap channel soft-kick: trap-channel; user had roles",
+    });
+  });
+
+  it("fails role-user soft-kick when the bot lacks Ban Members", async () => {
     const logs = logger();
 
     const result = await handleTrapMessage(
       message({
         authorId: "role-user-no-kick-permission",
         roleIds: ["guild-id", "member-role"],
-        botCanKick: false,
+        botCanBan: false,
       }),
       guildConfig({ actionMode: "ban", banConfirmed: true, roleUserAction: "kick" }),
       logs.instance,
@@ -240,7 +279,7 @@ describe("handleTrapMessage", () => {
     assert.deepEqual(result, {
       kind: "failed",
       userId: "role-user-no-kick-permission",
-      reason: "bot lacks Kick Members permission",
+      reason: "bot lacks Ban Members permission for role-user soft-kick",
     });
     assert.deepEqual(logs.calls, ["logAction"]);
   });

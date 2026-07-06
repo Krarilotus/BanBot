@@ -12,7 +12,7 @@ export const banbotHelp = [
   "BanBot setup:",
   "1. Run `/banbot setup trap_channel:#your-trap-channel`.",
   "2. Keep mode as dry-run while testing.",
-  "3. Optional: `/banbot setup role_user_action:kick` to kick users who have roles instead of ignoring them.",
+  "3. Optional: `/banbot setup role_user_action:kick` to soft-kick users who have roles and delete their last 10 minutes of messages.",
   "4. When dry-run logs look right, run `/banbot setup mode:ban confirm_ban_mode:enable ban mode`.",
   "5. The bot ignores its own messages, bots, and webhooks.",
 ].join("\n");
@@ -72,6 +72,14 @@ export function buildBanbotCommand(): SlashCommandSubcommandsOnlyBuilder {
             .setMaxValue(604800)
             .setRequired(false),
         )
+        .addIntegerOption((option) =>
+          option
+            .setName("role_user_delete_seconds")
+            .setDescription("Messages to delete for role-user soft-kicks, default 600 seconds")
+            .setMinValue(0)
+            .setMaxValue(604800)
+            .setRequired(false),
+        )
         .addStringOption((option) =>
           option
             .setName("confirm_ban_mode")
@@ -114,6 +122,7 @@ export async function handleBanbotInteraction(
   const mode = interaction.options.getString("mode");
   const roleUserAction = interaction.options.getString("role_user_action");
   const deleteSeconds = interaction.options.getInteger("delete_seconds");
+  const roleUserDeleteSeconds = interaction.options.getInteger("role_user_delete_seconds");
   const confirmBanMode = interaction.options.getString("confirm_ban_mode");
 
   if (trapChannel) next.trapChannelIds = [trapChannel.id];
@@ -123,6 +132,7 @@ export async function handleBanbotInteraction(
     next.roleUserAction = roleUserAction;
   }
   if (typeof deleteSeconds === "number") next.deleteMessageSeconds = deleteSeconds;
+  if (typeof roleUserDeleteSeconds === "number") next.roleUserDeleteMessageSeconds = roleUserDeleteSeconds;
   next.banConfirmed = next.actionMode === "ban" && confirmBanMode === "enable ban mode";
   if (next.actionMode !== "ban") next.banConfirmed = false;
   next.updatedAt = new Date().toISOString();
@@ -141,6 +151,7 @@ export function formatStatus(config: GuildConfig | undefined): string {
     `Log channel: ${logChannel}`,
     `Mode: ${effectiveActionMode(config)}${config.actionMode === "ban" && !config.banConfirmed ? " (ban requested but not confirmed)" : ""}`,
     `Users with roles: ${config.roleUserAction ?? "ignore"}`,
+    `Role-user delete seconds: ${config.roleUserDeleteMessageSeconds ?? 600}`,
     `Delete seconds: ${config.deleteMessageSeconds}`,
     `Updated: ${config.updatedAt}`,
   ].join("\n");
