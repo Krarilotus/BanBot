@@ -220,6 +220,19 @@ Logs may contain guild IDs, channel IDs, user IDs, usernames/tags, and action re
 
 ## Troubleshooting
 
+Aborted an old installer run: this is usually harmless. If you pressed `Ctrl+C` while it was asking for token/client ID, it may have installed security updates and created an old empty directory. The current installer can continue from there. To clean the old unused path first:
+
+```bash
+rm -rf /opt/discord-trap-ban-bot
+rm -f /root/install.sh
+```
+
+Then rerun the current installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Krarilotus/BanBot/master/install.sh | bash
+```
+
 Bot logs in but `/banbot` does not appear: reinvite the bot with the generated URL, which includes `applications.commands`.
 
 Bot logs in but does nothing: run `/banbot status`, check the trap channel, and confirm the message came from a human user with only `@everyone`.
